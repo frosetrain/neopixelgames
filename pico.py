@@ -9,7 +9,7 @@ import neopixel
 import usb_cdc
 from adafruit_itertools import cycle
 from adafruit_led_animation import color
-from adafruit_led_animation.animation.pulse import Pulse
+from adafruit_led_animation.animation.comet import Comet
 from rainbowio import colorwheel
 
 console = usb_cdc.data
@@ -20,7 +20,7 @@ pixels = neopixel.NeoPixel(board.GP0, num_pixels, brightness=0.1, auto_write=Fal
 def read_console(timeout: int | None) -> str | None:
     """Read a line from the console, with a timeout."""
     console.timeout = timeout
-    readline = console.readline()
+    readline = console.readline().decode("utf-8").strip()
     if readline:
         print("Received:", readline)
         return readline
@@ -34,7 +34,7 @@ def sleep_with_interrupt(seconds: int) -> bool:
         if not readline:
             continue
         print("Received:", readline)
-        if readline.decode("utf-8").strip() != "press":
+        if readline != "press":
             continue
         return True
     return False
@@ -226,10 +226,24 @@ def pixel_chase():
     show_score(level, color.ORANGE)
 
 
+comet = Comet(pixels, speed=1 / 30, color=color.PURPLE, tail_length=10, ring=True)
+
+
 if __name__ == "__main__":
+    pixels.fill(color.BLACK)
+    pixels.show()
     while True:
+        comet.animate()
+        read = read_console(0)
+        if not read:
+            continue
         pixels.fill(color.BLACK)
         pixels.show()
-        # reaction_test()
-        # tornado_game()
-        pixel_chase()
+        read_split = read.split(" ")
+        if read_split[0] == "game":
+            if read_split[1] == "0":
+                reaction_test()
+            elif read_split[1] == "1":
+                tornado_game()
+            elif read_split[1] == "2":
+                pixel_chase()
