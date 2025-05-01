@@ -1,7 +1,7 @@
 """Code to run on Orpheus Pico."""
 
 from math import floor
-from random import randint, random, uniform
+from random import choice, randint, random, uniform
 from time import monotonic, sleep
 
 import board
@@ -9,7 +9,13 @@ import neopixel
 import usb_cdc
 from adafruit_itertools import cycle
 from adafruit_led_animation import color
+from adafruit_led_animation.animation.chase import Chase
 from adafruit_led_animation.animation.comet import Comet
+from adafruit_led_animation.animation.pulse import Pulse
+from adafruit_led_animation.animation.rainbowcomet import RainbowComet
+from adafruit_led_animation.animation.rainbowsparkle import RainbowSparkle
+from adafruit_led_animation.animation.SparklePulse import SparklePulse
+from adafruit_led_animation.sequence import AnimationSequence
 from rainbowio import colorwheel
 
 console = usb_cdc.data
@@ -41,6 +47,7 @@ def sleep_with_interrupt(seconds: int) -> bool:
 
 
 def rainbow_cycle(wait: float, segments: int):
+    """Cycle through the rainbow."""
     for j in range(255):
         for i in range(num_pixels):
             rc_index = (i * 256 // (num_pixels // segments)) + j
@@ -156,6 +163,7 @@ def tornado_level(speed: float, target_colors: list[tuple[int, int, int]]) -> bo
 
 
 def tornado_game():
+    """Play tornado at increasing speeds until the game is over."""
     level_color_sequence = [
         [color.GREEN, color.TEAL, color.BLUE],
         [color.BLUE, color.PURPLE, color.PINK],
@@ -186,6 +194,7 @@ def tornado_game():
 
 
 def pixel_chase():
+    """Pac-Man but on a ring."""
     print("Press enter to start")
     read_console(None)
     print("Starting")
@@ -226,14 +235,31 @@ def pixel_chase():
     show_score(level, color.ORANGE)
 
 
-comet = Comet(pixels, speed=1 / 30, color=color.PURPLE, tail_length=10, ring=True)
+chase = Chase(pixels, speed=0.05, color=choice(color.RAINBOW), size=3, spacing=5)
+comet = Comet(pixels, speed=0.05, color=choice(color.RAINBOW), tail_length=16, ring=True)
+pulse = Pulse(pixels, speed=0.05, color=choice(color.RAINBOW), period=1)
+rainbow_comet = RainbowComet(pixels, speed=0.05, tail_length=16, ring=True)
+rainbow_sparkle = RainbowSparkle(pixels, speed=0.05, num_sparkles=3)
+sparkle_pulse = SparklePulse(pixels, speed=0.05, period=3, color=choice(color.RAINBOW))
+
+animations = AnimationSequence(
+    chase,
+    comet,
+    pulse,
+    rainbow_comet,
+    rainbow_sparkle,
+    sparkle_pulse,
+    advance_interval=10,
+    auto_clear=True,
+    random_order=True,
+)
 
 
 if __name__ == "__main__":
     pixels.fill(color.BLACK)
     pixels.show()
     while True:
-        comet.animate()
+        animations.animate()
         read = read_console(0)
         if not read:
             continue
@@ -247,3 +273,4 @@ if __name__ == "__main__":
                 tornado_game()
             elif read_split[1] == "2":
                 pixel_chase()
+            sleep(1)
