@@ -1,8 +1,5 @@
 """Pyglet interface that sends keypresses to the Pico."""
 
-from threading import Thread
-from time import sleep
-
 from cv2 import COLOR_BGR2RGB, VideoCapture, cvtColor
 from PIL import Image as PILImage
 from pyglet.app import run
@@ -12,8 +9,8 @@ from pyglet.media.exceptions import MediaException
 from pyglet.resource import image, media
 from pyglet.text import Label, Weight
 from pyglet.window import Window, key
+from pyzbar.pyzbar import ZBarSymbol, decode
 from serial import Serial
-from zxing import BarCodeReader
 
 GAME_NAMES = ["Reaction Test", "Tornado", "Pixel Chase"]
 
@@ -52,42 +49,8 @@ logo.anchor_y = logo.height // 2
 beep = media("beep.wav", streaming=False)
 
 serial = Serial("/dev/ttyACM1", timeout=1)
-zxing_reader = BarCodeReader()
 state = {"game_id": -1, "image_pyglet": None}
-
-
-class CameraThread(Thread):
-    """Thread class for camera capture."""
-
-    def __init__(self, camera_id=0):
-        """Initialize the camera capture thread."""
-        Thread.__init__(self)
-        self.camera_id = camera_id
-        self.capture = VideoCapture(camera_id)
-        self.frame = None
-        self.running = True
-        self.daemon = True
-
-    def run(self):
-        """Run the camera capture thread."""
-        while self.running:
-            ret, frame = self.capture.read()
-            if ret:
-                self.frame = frame
-            sleep(0.01)
-
-    def get_frame(self):
-        """Get the latest frame."""
-        return self.frame
-
-    def stop(self):
-        """Stop the camera capture thread."""
-        self.running = False
-        if self.capture:
-            self.capture.release()
-
-
-camera_thread = None
+capture = VideoCapture(0)
 
 
 def start_game(game_id: int) -> None:
@@ -110,7 +73,7 @@ def end_game() -> None:
     state["game_id"] = -1
     game_label.text = ""
     instructions_label.text = "Scan a floppy disk to choose a game"
-    scan_aztec(0)
+    read_camera(0)
 
 
 @window.event
@@ -147,28 +110,25 @@ def on_draw() -> None:
             end_game()
 
 
-def scan_aztec(dt: float) -> None:
+def read_camera(dt: float) -> None:
     """Update the camera feed."""
-    print(dt)
-
-    # Get the latest frame from the camera thread
-    image_cv = camera_thread.get_frame()
-    if image_cv is None or state["game_id"] != -1:
+    ret, frame = capture.read()
+    if frame is None or state["game_id"] != -1:
         return
 
-    image_rgb = cvtColor(image_cv, COLOR_BGR2RGB)
+    image_rgb = cvtColor(frame, COLOR_BGR2RGB)
     height, width, _ = image_rgb.shape
     state["image_pyglet"] = ImageData(width, height, "RGB", image_rgb.tobytes(), pitch=width * -3)
     state["image_pyglet"].anchor_x = width // 2
     state["image_pyglet"].anchor_y = height // 2
     pil_image = PILImage.fromarray(image_rgb)
-    scanned = zxing_reader.decode(pil_image)
-    print(scanned)
-    if not scanned.parsed:
+    scanned = decode(pil_image, symbols=[ZBarSymbol.QRCODE])
+    if not scanned:
         return
-    if not scanned.parsed.startswith("RIICC Neopixel Game"):
+    scanned_text = scanned[0].data.decode("utf-8")
+    if not scanned_text.startswith("RIICC Neopixel Game"):
         return
-    game_id = int(scanned.parsed[-1])
+    game_id = int(scanned_text[-1])
     if game_id < 0 or game_id > 2:
         print("Invalid game ID")
         return
@@ -178,13 +138,5 @@ def scan_aztec(dt: float) -> None:
 if __name__ == "__main__":
     print(f"Connected to: {serial.name}")
 
-    camera_thread = CameraThread(0)
-    camera_thread.start()
-
-    schedule_interval(scan_aztec, 0.1)
-    try:
-        run()
-    finally:
-        if camera_thread:
-            camera_thread.stop()
-            camera_thread.join(timeout=1.0)
+    schedule_interval(read_camera, 1 / 30)
+    run()

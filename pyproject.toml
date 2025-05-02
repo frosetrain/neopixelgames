@@ -9,5 +9,5 @@ dependencies = [
     "pillow>=11.2.1",
     "pyglet>=2.1.6",
     "pyserial>=3.5",
-    "zxing>=1.0.3",
+    "pyzbar>=0.1.9",
 ]
