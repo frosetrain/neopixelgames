@@ -91,7 +91,7 @@ def reaction_test():
     print("Press enter to start")
     read_console(None)
     print("Starting")
-    for i in range(5):
+    for i in range(18, 13, -1):
         pixels[i] = color.RED
         pixels.show()
         result = sleep_with_interrupt(1)
