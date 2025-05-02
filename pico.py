@@ -28,7 +28,6 @@ def read_console(timeout: int | None) -> str | None:
     console.timeout = timeout
     readline = console.readline().decode("utf-8").strip()
     if readline:
-        print("Received:", readline)
         return readline
 
 
@@ -39,7 +38,6 @@ def sleep_with_interrupt(seconds: int) -> bool:
         readline = read_console(0)
         if not readline:
             continue
-        print("Received:", readline)
         if readline != "press":
             continue
         return True
@@ -88,20 +86,16 @@ def show_score(score: int, swoosh_color: tuple[int, int, int]) -> None:
 
 def reaction_test():
     """Run the reaction test."""
-    print("Press enter to start")
     read_console(None)
-    print("Starting")
     for i in range(18, 13, -1):
         pixels[i] = color.RED
         pixels.show()
         result = sleep_with_interrupt(1)
         if result:
-            print("Jump start!")
             swoosh(color.RED)
             return
     result = sleep_with_interrupt(uniform(0.2, 3))
     if result:
-        print("Jump start!")
         swoosh(color.RED)
         return
     pixels.fill(color.BLACK)
@@ -114,7 +108,6 @@ def reaction_test():
         print(f"Your reaction time is: {round(reaction_time * 1000)} ms")
         show_score(round(reaction_time * 100), color.ORANGE)
     else:
-        print("You took too long to press!")
         swoosh(color.RED)
 
 
@@ -148,16 +141,12 @@ def tornado_level(speed: float, target_colors: list[tuple[int, int, int]]) -> bo
     diff = abs(cursor - target)
     sleep(1)
     if diff == 0:
-        print("Perfect!")
         swoosh(target_colors[0])
     elif diff == 1:
-        print("Close!")
         swoosh(target_colors[1])
     elif diff == 2:
-        print("Not bad!")
         swoosh(target_colors[2])
     else:
-        print("Too slow!")
         swoosh(color.RED)
     return True if diff <= 2 else False
 
@@ -170,9 +159,7 @@ def tornado_game():
         [color.YELLOW, color.ORANGE, color.RED],
     ]
     level_colors = cycle(level_color_sequence)
-    print("Press enter to start")
     read_console(None)
-    print("Starting")
     level = 1
     for level_color in level_colors:
         result = tornado_level(1 / (level * 5), level_color)
@@ -195,9 +182,7 @@ def tornado_game():
 
 def pixel_chase():
     """Pac-Man but on a ring."""
-    print("Press enter to start")
     read_console(None)
-    print("Starting")
     bad_guy = 16.0
     bad_guy_velocity = 0.0
     cookie = 24
@@ -254,14 +239,17 @@ animations = AnimationSequence(
     random_order=True,
 )
 
-
 if __name__ == "__main__":
     pixels.fill(color.BLACK)
     pixels.show()
 
+    prev_animation = None
     while True:
         animations.animate()
-
+        if animations.current_animation != prev_animation:
+            if prev_animation is not None:
+                prev_animation.color = choice(color.RAINBOW)
+            prev_animation = animations.current_animation
         # Check if a game was chosen
         read = read_console(0)
         if not read:
