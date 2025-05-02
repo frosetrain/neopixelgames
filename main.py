@@ -1,5 +1,8 @@
 """Pyglet interface that sends keypresses to the Pico."""
 
+from threading import Thread
+from time import sleep
+
 from cv2 import COLOR_BGR2RGB, VideoCapture, cvtColor
 from PIL import Image as PILImage
 from pyglet.app import run
@@ -26,7 +29,7 @@ title = Label(
     anchor_y="center",
 )
 game_label = Label(
-    "Game -1: india delta kilo",
+    "",
     font_name="Mona Sans",
     font_size=36,
     x=window.width // 2,
@@ -53,21 +56,77 @@ zxing_reader = BarCodeReader()
 state = {"game_id": -1, "image_pyglet": None}
 
 
+class CameraThread(Thread):
+    """Thread class for camera capture."""
+
+    def __init__(self, camera_id=0):
+        """Initialize the camera capture thread."""
+        Thread.__init__(self)
+        self.camera_id = camera_id
+        self.capture = VideoCapture(camera_id)
+        self.frame = None
+        self.running = True
+        self.daemon = True
+
+    def run(self):
+        """Run the camera capture thread."""
+        while self.running:
+            ret, frame = self.capture.read()
+            if ret:
+                self.frame = frame
+            sleep(0.01)
+
+    def get_frame(self):
+        """Get the latest frame."""
+        return self.frame
+
+    def stop(self):
+        """Stop the camera capture thread."""
+        self.running = False
+        if self.capture:
+            self.capture.release()
+
+
+camera_thread = None
+
+
+def start_game(game_id: int) -> None:
+    """Start a game."""
+    print("STARTING GAME", game_id)
+    state["game_id"] = game_id
+    game_label.text = f"Game {game_id}: {GAME_NAMES[game_id]}"
+    instructions_label.text = "Press the button to start"
+    command = f"game {game_id}\n"
+    serial.write(command.encode("utf-8"))
+    try:
+        beep.play()
+    except MediaException:
+        pass
+
+
+def end_game() -> None:
+    """End the game."""
+    print("ENDING GAME")
+    state["game_id"] = -1
+    game_label.text = ""
+    instructions_label.text = "Scan a floppy disk to choose a game"
+    scan_aztec(0)
+
+
 @window.event
 def on_key_press(symbol: int, modifiers: int) -> None:
     """Handle key presses."""
     if symbol in (key.W, key.A, key.S, key.D, key.F, key.G):
-        command = "press\n"
+        print("button pressed")
+        serial.write("press\n".encode("utf-8"))
+        if state["game_id"] != -1:
+            instructions_label.text = ""
     elif symbol in (key._0, key._1, key._2):
-        command = f"game {symbol - key._0}\n"
-        try:
-            beep.play()
-        except MediaException:
-            pass
+        start_game(symbol - key._0)
+    elif symbol == key.M:
+        end_game()
     else:
         return
-    print(command)
-    serial.write(command.encode("utf-8"))
 
 
 @window.event
@@ -81,14 +140,22 @@ def on_draw() -> None:
     if state["game_id"] != -1:
         game_label.draw()
     instructions_label.draw()
+    if serial.in_waiting > 0:
+        line = serial.readline().decode("utf-8").strip()
+        print(line)
+        if line == "end":
+            end_game()
 
 
 def scan_aztec(dt: float) -> None:
     """Update the camera feed."""
     print(dt)
-    if state["game_id"] != -1:
+
+    # Get the latest frame from the camera thread
+    image_cv = camera_thread.get_frame()
+    if image_cv is None or state["game_id"] != -1:
         return
-    ret, image_cv = VideoCapture(0).read()
+
     image_rgb = cvtColor(image_cv, COLOR_BGR2RGB)
     height, width, _ = image_rgb.shape
     state["image_pyglet"] = ImageData(width, height, "RGB", image_rgb.tobytes(), pitch=width * -3)
@@ -105,19 +172,19 @@ def scan_aztec(dt: float) -> None:
     if game_id < 0 or game_id > 2:
         print("Invalid game ID")
         return
-    print("STARTING GAME", scanned.parsed)
-    state["game_id"] = int(scanned.parsed[-1])
-    game_label.text = f"Game {game_id}: {GAME_NAMES[game_id]}"
-    instructions_label.text = "Press the button to start"
-    command = f"game {game_id}\n"
-    serial.write(command.encode("utf-8"))
-    try:
-        beep.play()
-    except MediaException:
-        pass
+    start_game(game_id)
 
 
 if __name__ == "__main__":
     print(f"Connected to: {serial.name}")
-    schedule_interval(scan_aztec, 0.5)
-    run()
+
+    camera_thread = CameraThread(0)
+    camera_thread.start()
+
+    schedule_interval(scan_aztec, 0.1)
+    try:
+        run()
+    finally:
+        if camera_thread:
+            camera_thread.stop()
+            camera_thread.join(timeout=1.0)

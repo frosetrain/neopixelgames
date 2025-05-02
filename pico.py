@@ -258,19 +258,28 @@ animations = AnimationSequence(
 if __name__ == "__main__":
     pixels.fill(color.BLACK)
     pixels.show()
+
     while True:
         animations.animate()
+
+        # Check if a game was chosen
         read = read_console(0)
         if not read:
             continue
+
+        # Start a game
         pixels.fill(color.BLACK)
         pixels.show()
         read_split = read.split(" ")
-        if read_split[0] == "game":
-            if read_split[1] == "0":
-                reaction_test()
-            elif read_split[1] == "1":
-                tornado_game()
-            elif read_split[1] == "2":
-                pixel_chase()
-            sleep(1)
+        if read_split[0] != "game":
+            continue
+        if read_split[1] == "0":
+            reaction_test()
+        elif read_split[1] == "1":
+            tornado_game()
+        elif read_split[1] == "2":
+            pixel_chase()
+
+        # Game ended
+        console.write("end\n")
+        sleep(1)
