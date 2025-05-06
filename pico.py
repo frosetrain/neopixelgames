@@ -256,11 +256,11 @@ if __name__ == "__main__":
             continue
 
         # Start a game
-        pixels.fill(color.BLACK)
-        pixels.show()
         read_split = read.split(" ")
         if read_split[0] != "game":
             continue
+        pixels.fill(color.BLACK)
+        pixels.show()
         if read_split[1] == "0":
             reaction_test()
         elif read_split[1] == "1":

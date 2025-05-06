@@ -1,5 +1,8 @@
 """Pyglet interface that sends keypresses to the Pico."""
 
+from datetime import datetime
+from os import makedirs
+
 from cv2 import COLOR_BGR2RGB, VideoCapture, cvtColor
 from PIL import Image as PILImage
 from pyglet.app import run
@@ -132,6 +135,10 @@ def read_camera(dt: float) -> None:
     if game_id < 0 or game_id > 2:
         print("Invalid game ID")
         return
+    # Take a photo haha
+    current_iso_dt = datetime.now().isoformat(timespec="seconds")
+    makedirs("dist", exist_ok=True)
+    pil_image.save(f"dist/{current_iso_dt}.png")
     start_game(game_id)
 
 
