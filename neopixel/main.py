@@ -8,6 +8,7 @@ from PIL import Image as PILImage
 from pyglet.app import run
 from pyglet.clock import schedule_interval
 from pyglet.image import ImageData
+from pyglet.media import Player
 from pyglet.media.exceptions import MediaException
 from pyglet.resource import image, media
 from pyglet.text import Label, Weight
@@ -49,10 +50,16 @@ instructions_label = Label(
 logo = image("riicc-ondark.svg")
 logo.anchor_x = logo.width // 2
 logo.anchor_y = logo.height // 2
-beep = media("beep.wav", streaming=False)
+beep = media("sounds/beep.wav", streaming=False)
+lrad = media("sounds/lrad.wav", streaming=False)
+beep_player = Player()
+beep_player.queue(lrad)
+beep_player.loop = True
+keys = key.KeyStateHandler()
+window.push_handlers(keys)
 
 serial = Serial("/dev/ttyACM1", timeout=1)
-state = {"game_id": -1, "image_pyglet": None}
+state = {"game_id": -1, "image_pyglet": None, "beep_enabled": False}
 capture = VideoCapture(0)
 
 
@@ -84,6 +91,9 @@ def on_key_press(symbol: int, modifiers: int) -> None:
     """Handle key presses."""
     if symbol in (key.W, key.A, key.S, key.D, key.F, key.G):
         print("button pressed")
+        if state["beep_enabled"]:
+            beep_player.seek(0)
+            beep_player.play()
         serial.write("press\n".encode("utf-8"))
         if state["game_id"] != -1:
             instructions_label.text = ""
@@ -91,8 +101,17 @@ def on_key_press(symbol: int, modifiers: int) -> None:
         start_game(symbol - key._0)
     elif symbol == key.M:
         end_game()
+    elif symbol == key.B:
+        state["beep_enabled"] = True
     else:
         return
+
+
+@window.event
+def on_key_release(symbol: int, modifiers: int) -> None:
+    """Handle key releases."""
+    if symbol in (key.W, key.A, key.S, key.D, key.F, key.G) and state["beep_enabled"]:
+        beep_player.pause()
 
 
 @window.event
