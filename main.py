@@ -90,7 +90,6 @@ def end_game() -> None:
 def on_key_press(symbol: int, modifiers: int) -> None:
     """Handle key presses."""
     if symbol in (key.W, key.A, key.S, key.D, key.F, key.G):
-        print("button pressed")
         if state["beep_enabled"]:
             beep_player.seek(0)
             beep_player.play()
@@ -102,7 +101,7 @@ def on_key_press(symbol: int, modifiers: int) -> None:
     elif symbol == key.M:
         end_game()
     elif symbol == key.B:
-        state["beep_enabled"] = True
+        state["beep_enabled"] = not state["beep_enabled"]
     else:
         return
 
