@@ -20,7 +20,7 @@ from rainbowio import colorwheel
 
 console = usb_cdc.data
 num_pixels = 32
-pixels = neopixel.NeoPixel(board.GP0, num_pixels, brightness=0.1, auto_write=False)
+pixels = neopixel.NeoPixel(board.GP0, num_pixels, brightness=0.2, auto_write=False)
 
 
 def read_console(timeout: int | None) -> str | None:

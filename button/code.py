@@ -1,10 +1,9 @@
-import usb_hid
 import board
 import digitalio
+import usb_hid
+from adafruit_debouncer import Debouncer
 from adafruit_hid.keyboard import Keyboard
 from adafruit_hid.keycode import Keycode
-from adafruit_debouncer import Debouncer
-from time import sleep
 
 kbd = Keyboard(usb_hid.devices)
 
